@@ -1,5 +1,5 @@
 [project]
-name = "spotdl-lean"
+name = "spotdl"
 version = "4.2.11"
 description = "Download your Spotify playlists and songs along with album art and metadata"
 license = {text = "MIT"}
@@ -48,7 +48,6 @@ dependencies = [
     "syncedlyrics>=1.0.1,<2.0.0",
     "soundcloud-v2>=1.6.0,<2.0.0",
     "websockets>=14.1,<15.0.0",
-    "editables>=0.5",
 ]
 
 [project.optional-dependencies]
