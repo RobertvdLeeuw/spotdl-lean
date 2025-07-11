@@ -1,6 +1,7 @@
 # Ignore IDE folders
 .idea
 .direnv/
+downloads/
 
 # Spotdl stuff
 *.skip
