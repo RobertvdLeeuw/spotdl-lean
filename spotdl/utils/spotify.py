@@ -132,6 +132,65 @@ class Singleton(type):
         # Return instance
         return self._instance
 
+    def init_with_client(  # pylint: disable=bad-mcs-method-argument
+        self,
+        spotify_client,  # spotipy.Spotify instance
+        max_retries: int = 3,
+        use_cache_file: bool = False,
+        no_cache: bool = False,
+    ) -> "SpotifyClient":
+        """
+        Initialize SpotifyClient with an existing spotipy.Spotify instance.
+        This allows injection of a pre-configured Spotify client.
+
+        ### Arguments
+        - spotify_client: Pre-configured spotipy.Spotify instance
+        - max_retries: Maximum number of retries for requests
+        - use_cache_file: Whether to use cache file
+        - no_cache: Whether to disable caching
+
+        ### Returns
+        - The SpotifyClient instance
+        """
+
+        # Check if initialization has been completed, if yes, raise an Exception
+        if isinstance(self._instance, self):
+            raise SpotifyError("A spotify client has already been initialized")
+
+        # Create a new SpotifyClient instance that wraps the provided Spotify client
+        # We need to manually create the instance and copy the necessary attributes
+        self._instance = object.__new__(self)
+
+        # Copy essential attributes from the provided client
+        self._instance.__dict__.update(spotify_client.__dict__)
+
+        # Set SpotifyClient-specific attributes
+        self._instance.max_retries = max_retries
+        self._instance.use_cache_file = use_cache_file
+        self._instance.no_cache = no_cache
+        self._instance.user_auth = False  # Assume false for injected clients
+        self._instance._initialized = True
+        self._instance.cache = {}
+
+        # Initialize the cache if needed
+        if use_cache_file:
+            cache_file_loc = get_spotify_cache_path()
+            if cache_file_loc.exists():
+                import json
+                with open(cache_file_loc, "r", encoding="utf-8") as cache_file:
+                    self._instance.cache = json.load(cache_file)
+            else:
+                import json
+                with open(cache_file_loc, "w", encoding="utf-8") as cache_file:
+                    json.dump(self._instance.cache, cache_file)
+
+        # Bind the SpotifyClient methods to our instance
+        # This ensures the _get method override works correctly
+        self._instance.__class__ = self
+
+        return self._instance
+
+
 
 class SpotifyClient(Spotify, metaclass=Singleton):
     """

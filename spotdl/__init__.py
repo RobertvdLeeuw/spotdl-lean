@@ -1,6 +1,8 @@
 """
 Init module for spotdl. This module contains the main entry point for spotdl.
 And Spotdl class
+
+MODIFIED VERSION: Allows injection of existing spotipy.Spotify client
 """
 
 import asyncio
@@ -8,6 +10,8 @@ import concurrent.futures
 import logging
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
+
+import spotipy
 
 from spotdl._version import __version__
 from spotdl.console import console_entry_point
@@ -26,9 +30,19 @@ class Spotdl:
     """
     Spotdl class, which simplifies the process of downloading songs from Spotify.
 
+    MODIFIED: Now supports injection of existing spotipy.Spotify client
+
     ```python
     from spotdl import Spotdl
+    import spotipy
 
+    # Option 1: Use your own spotify client
+    spotify_client = spotipy.Spotify(
+        client_credentials_manager=your_credentials_manager
+    )
+    spotdl = Spotdl(spotify_client=spotify_client)
+
+    # Option 2: Use the original method
     spotdl = Spotdl(client_id='your-client-id', client_secret='your-client-secret')
 
     songs = spotdl.search(['joji - test drive',
@@ -41,8 +55,9 @@ class Spotdl:
 
     def __init__(
         self,
-        client_id: str,
-        client_secret: str,
+        client_id: Optional[str] = None,
+        client_secret: Optional[str] = None,
+        spotify_client: Optional[spotipy.Spotify] = None,
         user_auth: bool = False,
         cache_path: Optional[str] = None,
         no_cache: bool = False,
@@ -56,8 +71,9 @@ class Spotdl:
         Initialize the Spotdl class
 
         ### Arguments
-        - client_id: Spotify client id
-        - client_secret: Spotify client secret
+        - client_id: Spotify client id (optional if spotify_client provided)
+        - client_secret: Spotify client secret (optional if spotify_client provided)
+        - spotify_client: Pre-configured spotipy.Spotify instance (NEW)
         - user_auth: If true, user will be prompted to authenticate
         - cache_path: Path to cache directory
         - no_cache: If true, no cache will be used
@@ -70,14 +86,29 @@ class Spotdl:
             downloader_settings = {}
 
         # Initialize spotify client
-        SpotifyClient.init(
-            client_id=client_id,
-            client_secret=client_secret,
-            user_auth=user_auth,
-            cache_path=cache_path,
-            no_cache=no_cache,
-            headless=headless,
-        )
+        if spotify_client is not None:
+            # Use the provided spotify client
+            SpotifyClient.init_with_client(
+                spotify_client=spotify_client,
+                max_retries=3,  # You can make this configurable
+                use_cache_file=False,  # You can make this configurable
+                no_cache=no_cache,
+            )
+        else:
+            # Use the original initialization method
+            if client_id is None or client_secret is None:
+                raise ValueError(
+                    "Either provide spotify_client or both client_id and client_secret"
+                )
+
+            SpotifyClient.init(
+                client_id=client_id,
+                client_secret=client_secret,
+                user_auth=user_auth,
+                cache_path=cache_path,
+                no_cache=no_cache,
+                headless=headless,
+            )
 
         # Initialize downloader
         self.downloader = Downloader(
