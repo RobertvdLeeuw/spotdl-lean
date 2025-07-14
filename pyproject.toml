@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "spotdl-lean"
+name = "spotdl"
 version = "4.2.11"
 description = "Download your Spotify playlists and songs along with album art and metadata"
 license = "MIT"
