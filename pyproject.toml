@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "spotdl"
+name = "spotdl-lean"
 version = "4.2.11"
 description = "Download your Spotify playlists and songs along with album art and metadata"
 license = "MIT"
@@ -50,6 +50,9 @@ pykakasi = "^2.3.0"
 syncedlyrics = "^1.0.1"
 soundcloud-v2 = "^1.6.0"
 websockets = "^14.1"
+poetry = "^2.1.3"
+hatchling = "^1.27.0"
+
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"
@@ -88,12 +91,8 @@ spotdl = "spotdl:console_entry_point"
 [tool.isort]
 profile = "black"
 
-# [build-system]
-# requires = ["poetry-core>=1.0.0"]
-# build-backend = "poetry.core.masonry.api"
-
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.pylint.format]
