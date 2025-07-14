@@ -39,45 +39,66 @@
         workspaceRoot = ./.;
         config.deps = "all";
       };  # Loading in pyproject and project data.
+
       # Create package overlay from workspace.
       overlay = workspace.mkPyprojectOverlay {
         sourcePreference = "wheel";  # Wheel is best, apparently.
-        # Optionally customise PEP 508 environment
-        # environ = {
-        #   platform_release = "5.10.65";
-        # };
       };
+
       # Extend generated overlay with build fixups, uv can only do so much on its own.
-      # - https://pyproject-nix.github.io/uv2nix/FAQ.html
       pyprojectOverrides = final: prev: {
-        # Note that uv2nix is *not* using Nixpkgs buildPythonPackage.
-        # It's using https://pyproject-nix.github.io/pyproject.nix/build.html
         numba = prev.numba.overrideAttrs (old: {
           buildInputs = (old.buildInputs or []) ++ [ pkgs.tbb_2022_0 ];
         });
+
+        # Fix hatchling first
         hatchling = prev.hatchling.overrideAttrs (old: {
           nativeBuildInputs = (old.nativeBuildInputs or []) ++
-            final.resolveBuildSystem { editables = []; };
+            final.resolveBuildSystem {
+              setuptools = [];
+              wheel = [];
+            };
         });
+
+        # Fix editables package
+        editables = prev.editables.overrideAttrs (old: {
+          nativeBuildInputs = (old.nativeBuildInputs or []) ++
+            final.resolveBuildSystem { setuptools = []; };
+        });
+
+        # # Fix spotdl-lean with all required build dependencies
+        # spotdl-lean = prev.spotdl-lean.overrideAttrs (old: {
+        #   nativeBuildInputs = (old.nativeBuildInputs or []) ++
+        #     final.resolveBuildSystem {
+        #       hatchling = [];
+        #       editables = [];
+        #       setuptools = [];  # Fallback
+        #       wheel = [];
+        #     };
+        #   # Add system dependencies if needed
+        #   buildInputs = (old.buildInputs or []) ++ [
+        #     pkgs.ffmpeg  # spotdl often needs ffmpeg
+        #   ];
+        # });
+
         jaconv = prev.jaconv.overrideAttrs (old: {
           nativeBuildInputs = (old.nativeBuildInputs or []) ++
             final.resolveBuildSystem { setuptools = []; };
         });
-        # Add override for spotdl to include editables dependency
-        spotdl-lean = prev.spotdl-lean.overrideAttrs (old: {
+
+        # Add other common problematic packages
+        jukemirlib = prev.jukemirlib.overrideAttrs (old: {
           nativeBuildInputs = (old.nativeBuildInputs or []) ++
-            final.resolveBuildSystem {
-              hatchling = [];
-              editables = [];
-            };
+            final.resolveBuildSystem { setuptools = []; };
         });
       };
+
       # This example is only using x86_64-linux
-      pkgs = nixpkgs.legacyPackages.x86_64-linux;  # Legacy just means we can use entire Nixpkgs.
+      pkgs = nixpkgs.legacyPackages.x86_64-linux;
       python = pkgs.python312;
+
       # Construct package set
-      pythonSet =  # Further 'translation' for python package use. TODO: Research more later.
-        # Use base package set from pyproject.nix builders
+      pythonSet =
         (pkgs.callPackage pyproject-nix.build.packages {
           inherit python;
         }).overrideScope
@@ -92,106 +113,88 @@
       {
       # Nix build
       packages.x86_64-linux.default = pythonSet.mkVirtualEnv "venv" workspace.deps.default;
-      apps.x86_64-linux = {  # Nix run
+
+      apps.x86_64-linux = {
         default = {
           type = "app";
           program = "${self.packages.x86_64-linux.default}/bin/spotdl";
         };
       };
-      devShells.x86_64-linux =  # Nix develop
+
+      devShells.x86_64-linux =
         let
-          setup = {  # General/shared
+          setup = {
             packages = [
               python
               pkgs.uv
               pkgs.libsndfile
               pkgs.postgresql_16
+              pkgs.ffmpeg  # Add ffmpeg to shell
             ];
             env = {
-              UV_PYTHON_DOWNLOADS = "never";  # Prevent uv from managing Python downloads
+              UV_PYTHON_DOWNLOADS = "never";
             };
             shellHook = ''
-              unset PYTHONPATH  # Only expose py packages stated in here, no global imports.
-              '';
+              unset PYTHONPATH
+            '';
           };
         in {
-          # TODO: Make this inherit from default, or would that be bad abstraction?
-          # Or 'let generalSetup = {} in default, impure'?
           impure = pkgs.mkShell {
             packages = setup.packages;
             env = setup.env // {
-              UV_PYTHON = python.interpreter;  # Force uv to use nixpkgs Python interpreter
+              UV_PYTHON = python.interpreter;
             } // lib.optionalAttrs pkgs.stdenv.isLinux {
-                # Exposes C (.so) stuff for packages like numpy. dlopen(3)
                 LD_LIBRARY_PATH = "${lib.makeLibraryPath pkgs.pythonManylinuxPackages.manylinux1}";
               };
             shellHook = setup.shellHook;
           };
-          # This devShell uses uv2nix to construct a virtual environment purely from Nix, using the same dependency specification as the application.
-          # The notable difference is that we also apply another overlay here enabling editable mode ( https://setuptools.pypa.io/en/latest/userguide/development_mode.html ).
-          #
-          # This means that any changes done to your local files do not require a rebuild.
-          #
-          # Note: Editable package support is still unstable and subject to change.
+
           default =
             let
-              # Create an overlay enabling editable mode for all local dependencies.
+              # Create an overlay enabling editable mode for LOCAL packages only
               editableOverlay = workspace.mkEditablePyprojectOverlay {
-                # Use environment variable
                 root = "$REPO_ROOT";
-                # Optional: Only enable editable for these packages
-                # members = [ "spotdl-lean" ];
+                # Only enable editable for your actual local packages, not Git dependencies
+                members = [ "music-embed" ];  # Your actual package name
               };
-              # Override previous set with our overrideable overlay.
+
               editablePythonSet = pythonSet.overrideScope (
                 lib.composeManyExtensions [
                   editableOverlay
-                  # Apply fixups for building an editable package of your workspace packages
+                  # Only apply editable fixups to your local packages
                   (final: prev: {
-                    spotdl-lean = prev.spotdl-lean.overrideAttrs (old: {
-                      # It's a good idea to filter the sources going into an editable build
-                      # so the editable package doesn't have to be rebuilt on every change.
+                    music-embed = prev.music-embed.overrideAttrs (old: {
                       src = lib.fileset.toSource {
                         root = old.src;
                         fileset = lib.fileset.unions [
                           (old.src + "/pyproject.toml")
                           (old.src + "/README.md")
                           (lib.fileset.maybeMissing (old.src + "/src"))
-                          (lib.fileset.maybeMissing (old.src + "/spotdl"))
                         ];
                       };
-                      # Hatchling (our build system) has a dependency on the `editables` package when building editables.
-                      #
-                      # In normal Python flows this dependency is dynamically handled, and doesn't need to be explicitly declared.
-                      # This behaviour is documented in PEP-660.
-                      #
-                      # With Nix the dependency needs to be explicitly declared.
-                      nativeBuildInputs =  # For build dependencies, but not runtime ones.
+                      nativeBuildInputs =
                         old.nativeBuildInputs
                         ++ final.resolveBuildSystem {
-                          hatchling = [ ];
-                          editables = [ ];
+                          setuptools = [];  # Your project uses setuptools
+                          wheel = [];
+                          editables = [];
                         };
                     });
                   })
                 ]
               );
-              # Build virtual environment, with local packages being editable.
-              #
-              # Enable all optional dependencies for development.
-              virtualenv = editablePythonSet.mkVirtualEnv "spotdl-dev-env" workspace.deps.all;
+
+              virtualenv = editablePythonSet.mkVirtualEnv "music-embed-dev-env" workspace.deps.all;
             in
               pkgs.mkShell {
                 packages = setup.packages;
                 env = setup.env // {
-                  UV_NO_SYNC = "1";  # We already have created a virtualenv.
-                  UV_PYTHON = "${virtualenv}/bin/python";  # Force uv to use Python interpreter from venv
+                  UV_NO_SYNC = "1";
+                  UV_PYTHON = "${virtualenv}/bin/python";
                 };
-                # TODO: This somehow also execs on impure shells. Figure out how/why and whether I would want a true split.
                 shellHook = setup.shellHook + ''
-                  # Get repository root using git. This is expanded at runtime by the editable `.pth` machinery.
-                  export REPO_ROOT=$(git rev-parse --show-toplevel)  # TODO: This could be useful for nvim or other tools to find project root.
-                  export PATH="${virtualenv}/bin:$PATH" # Let Python know about the virtualenv for imports
+                  export REPO_ROOT=$(git rev-parse --show-toplevel)
+                  export PATH="${virtualenv}/bin:$PATH"
                 '';
               };
         };
