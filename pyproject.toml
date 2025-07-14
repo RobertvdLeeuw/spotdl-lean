@@ -88,8 +88,12 @@ spotdl = "spotdl:console_entry_point"
 [tool.isort]
 profile = "black"
 
+# [build-system]
+# requires = ["poetry-core>=1.0.0"]
+# build-backend = "poetry.core.masonry.api"
+
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.pylint.format]
