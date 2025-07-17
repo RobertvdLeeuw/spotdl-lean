@@ -88,7 +88,8 @@ class Singleton(type):
 
         # check if initialization has been completed, if yes, raise an Exception
         if isinstance(self._instance, self):
-            raise SpotifyError("A spotify client has already been initialized")
+            return self._instance
+            # raise SpotifyError("A spotify client has already been initialized")
 
         credential_manager = None
 
@@ -155,7 +156,8 @@ class Singleton(type):
 
         # Check if initialization has been completed, if yes, raise an Exception
         if isinstance(self._instance, self):
-            raise SpotifyError("A spotify client has already been initialized")
+            return self._instance
+            # raise SpotifyError("A spotify client has already been initialized")
 
         # Create a new SpotifyClient instance that wraps the provided Spotify client
         # We need to manually create the instance and copy the necessary attributes
