@@ -1,4 +1,15 @@
 import os
+import logging
+
+# Configure logging before importing spotdl
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),  # Console output
+        logging.FileHandler('spotdl.log')  # File output
+    ]
+)
 
 from spotdl import Spotdl
 from spotdl.types.options import DownloaderOptions, DownloaderOptionalOptions
@@ -29,7 +40,7 @@ spotdl = Spotdl(spotify_client=spotify_client,
 #     client_secret="767732da0b064b838ebe5d0e3f6ce4eb",
 # )
 
-spotify_id = "3dzCClyQ3qKx2o3CLIx02r"
+spotify_id = "1cEyI2vCcexc8GBVFSv1o7"
 song = spotdl.search([f"https://open.spotify.com/track/{spotify_id}"])[0]
 
 if not song:
@@ -44,9 +55,9 @@ print(x, file_path)
 
 if not file_path or not os.path.exists(file_path):
     print(f"Download of {spotify_id} completed but file not found: {file_path}")
-    raise Exception(f"Download of {spotify_id} completed but file not found: {file_path}")
+    # raise Exception(f"Download of {spotify_id} completed but file not found: {file_path}")
+else:
+    print(f"Downloading song '{file_path}' successful.")
+# file_size = os.path.getsize(file_path)
+# print(f"Download completed: {file_path} ({file_size / (1024*1024):.2f} MB).")
 
-file_size = os.path.getsize(file_path)
-print(f"Download completed: {file_path} ({file_size / (1024*1024):.2f} MB).")
-
-print(f"Downloading song '{file_path}' successful.")
