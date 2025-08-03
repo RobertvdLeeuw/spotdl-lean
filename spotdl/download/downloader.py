@@ -255,6 +255,20 @@ class Downloader:
 
         return results[0]
 
+    def run_async(self, coro):
+        try:
+            # Check if we're already in an event loop
+            loop = asyncio.get_running_loop()
+            # If we get here, there's already a running loop
+            # We need to run in a thread to avoid the "cannot be called from a running event loop" error
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, coro)
+                return future.result()
+        except RuntimeError:
+            # No running loop, safe to use asyncio.run()
+            return asyncio.run(coro)
+
     def download_multiple_songs(
         self, songs: List[Song]
     ) -> List[Tuple[Song, Optional[Path]]]:
@@ -295,7 +309,11 @@ class Downloader:
         tasks = [self.pool_download(song) for song in songs]
 
         # Call all task asynchronously, and wait until all are finished
-        results = list(self.loop.run_until_complete(asyncio.gather(*tasks)))
+
+        async def run_tasks():
+            return await asyncio.gather(*tasks)
+
+        results = self.run_async(run_tasks())
 
         # Print errors
         if self.settings["print_errors"]:
@@ -372,7 +390,10 @@ class Downloader:
         # tasks that cannot acquire semaphore will wait here until it's free
         # only certain amount of tasks can acquire the semaphore at the same time
         async with self.semaphore:
-            return await self.loop.run_in_executor(None, self.search_and_download, song)
+            # return await self.loop.run_in_executor(None, self.search_and_download, song)
+
+            loop = asyncio.get_running_loop()
+            return await loop.run_in_executor(None, self.search_and_download, song)
 
     def search(self, song: Song) -> str:
         """

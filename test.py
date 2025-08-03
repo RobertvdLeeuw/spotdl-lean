@@ -1,5 +1,6 @@
 import os
 import logging
+import asyncio
 
 # Configure logging before importing spotdl
 logging.basicConfig(
@@ -27,37 +28,45 @@ credentials = SpotifyClientCredentials(
 )
 spotify_client = spotipy.Spotify(client_credentials_manager=credentials)
 
-spotdl = Spotdl(spotify_client=spotify_client,
-                downloader_settings=DownloaderOptions(format="wav",
-                                                      simple_tui=False,
-                                                      print_download_errors=False,
-                                                      output=DOWNLOAD_LOC)
-                )
+async def eepy():
+    while True:
+        print("Sleepy.")
+        asyncio.sleep(1)
 
-# spotdl = Spotdl(
-#     no_cache=True,
-#     client_id="a766651ba4b744ed82f1e520a75b2455",
-#     client_secret="767732da0b064b838ebe5d0e3f6ce4eb",
-# )
+async def main():
+    spotdl = Spotdl(spotify_client=spotify_client,
+                    downloader_settings=DownloaderOptions(format="wav",
+                                                          simple_tui=False,
+                                                          print_download_errors=False,
+                                                          output=DOWNLOAD_LOC),
+                    )
+                    # loop=asyncio.get_event_loop())
 
-spotify_id = "1cEyI2vCcexc8GBVFSv1o7"
-song = spotdl.search([f"https://open.spotify.com/track/{spotify_id}"])[0]
+    # spotdl = Spotdl(
+    #     no_cache=True,
+    #     client_id="a766651ba4b744ed82f1e520a75b2455",
+    #     client_secret="767732da0b064b838ebe5d0e3f6ce4eb",
+    # )
 
-if not song:
-    print(f"No song found for id: {spotify_id}")
-    exit()
+    spotify_id = "1cEyI2vCcexc8GBVFSv1o7"
+    song = spotdl.search([f"https://open.spotify.com/track/{spotify_id}"])[0]
 
-print(f"Song found: {song.name} by {song.artist}")
+    if not song:
+        print(f"No song found for id: {spotify_id}")
+        exit()
 
-x, file_path = spotdl.download(song)
-print(x, file_path)
-# _, file_path = downloader.download_song(song)
+    print(f"Song found: {song.name} by {song.artist}")
 
-if not file_path or not os.path.exists(file_path):
-    print(f"Download of {spotify_id} completed but file not found: {file_path}")
-    # raise Exception(f"Download of {spotify_id} completed but file not found: {file_path}")
-else:
-    print(f"Downloading song '{file_path}' successful.")
-# file_size = os.path.getsize(file_path)
-# print(f"Download completed: {file_path} ({file_size / (1024*1024):.2f} MB).")
+    x, file_path = spotdl.download(song)
+    print(x, file_path)
+    # _, file_path = downloader.download_song(song)
 
+    if not file_path or not os.path.exists(file_path):
+        print(f"Download of {spotify_id} completed but file not found: {file_path}")
+        # raise Exception(f"Download of {spotify_id} completed but file not found: {file_path}")
+    else:
+        print(f"Downloading song '{file_path}' successful.")
+    # file_size = os.path.getsize(file_path)
+    # print(f"Download completed: {file_path} ({file_size / (1024*1024):.2f} MB).")
+
+asyncio.run(main())
