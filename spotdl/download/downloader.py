@@ -82,6 +82,9 @@ SPONSOR_BLOCK_CATEGORIES = {
 
 logger = logging.getLogger(__name__)
 
+class LookupError(Exception):
+    pass
+
 
 class DownloaderError(Exception):
     """
@@ -305,10 +308,7 @@ class Downloader:
 
         self.progress_handler.set_song_count(len(songs))
 
-        # Create tasks list
         tasks = [self.pool_download(song) for song in songs]
-
-        # Call all task asynchronously, and wait until all are finished
 
         async def run_tasks():
             return await asyncio.gather(*tasks)
