@@ -20,6 +20,7 @@ from yt_dlp.postprocessor.sponsorblock import SponsorBlockPP
 from spotdl.download.progress_handler import ProgressHandler
 from spotdl.providers.audio import (
     AudioProvider,
+    AudioProviderError,
     BandCamp,
     Piped,
     SoundCloud,
@@ -711,9 +712,21 @@ class Downloader:
                 display_progress_tracker.yt_dlp_progress_hook
             )
 
-            download_info = audio_downloader.get_download_metadata(
-                download_url, download=True
-            )
+            try:
+                download_info = audio_downloader.get_download_metadata(
+                    download_url, download=True
+                )
+            except AudioProviderError:
+                logger.debug(
+                    "No download info found for %s, url: %s",
+                    song.display_name,
+                    download_url,
+                )
+
+                raise DownloaderError(
+                    f"yt-dlp failed to get metadata for: {song.name} - {song.artist}"
+                )
+
 
             temp_file = Path(
                 temp_folder / f"{download_info['id']}.{download_info['ext']}"
