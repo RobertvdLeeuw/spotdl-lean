@@ -82,10 +82,6 @@ SPONSOR_BLOCK_CATEGORIES = {
 
 logger = logging.getLogger(__name__)
 
-class LookupError(Exception):
-    pass
-
-
 class DownloaderError(Exception):
     """
     Base class for all exceptions related to downloaders.
