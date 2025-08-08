@@ -317,18 +317,12 @@ def convert(
 
     # Add bitrate if specified
     if bitrate:
-        # If we're doing stream copying, bitrate copy makes sense
-        if "-c:a" in arguments and "copy" in arguments:
-            if bitrate == "copy":
-                arguments.extend(["-b:a", "copy"])
-            # else: don't add bitrate for stream copying with specific bitrate
-        elif bitrate != "copy":
-            # Only add bitrate for non-PCM formats when not stream copying
-            if output_format not in ["wav"]:  # PCM formats don't use bitrate
-                if bitrate.isdigit():
-                    arguments.extend(["-q:a", bitrate])
-                else:
-                    arguments.extend(["-b:a", bitrate])
+        # Check if bitrate is an integer
+        # if it is then use it as variable bitrate
+        if bitrate.isdigit():
+            arguments.extend(["-q:a", bitrate])
+        else:
+            arguments.extend(["-b:a", bitrate])
 
     # Add other ffmpeg arguments if specified
     if ffmpeg_args:
