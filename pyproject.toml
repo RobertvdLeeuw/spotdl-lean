@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "spotdl-lean"
-version = "4.2.11"
+version = "4.2.12"
 description = "Download your Spotify playlists and songs along with album art and metadata"
 readme = "README.md"
 license = {text = "MIT"}
